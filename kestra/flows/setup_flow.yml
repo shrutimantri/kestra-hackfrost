@@ -1,0 +1,75 @@
+id: setup_flow
+namespace: frosty.raiders
+
+tasks:
+  - id: download_customers
+    type: io.kestra.plugin.core.http.Download
+    uri: https://raw.githubusercontent.com/shrutimantri/javaPractice/refs/heads/master/resources/data/customers.csv
+
+  - id: create_customers_table
+    type: io.kestra.plugin.jdbc.postgresql.Query
+    sql: |
+      CREATE TABLE IF NOT EXISTS CUSTOMERS (
+      customer_id int,
+      gender varchar(10),
+      age int,
+      annual_income int,  
+      spending_score int,
+      profession varchar(100),    
+      work_experience int,
+      family_size int,
+      PRIMARY KEY (customer_id));
+
+  - id: load_customers
+    type: io.kestra.plugin.jdbc.postgresql.CopyIn
+    format: CSV
+    from: "{{ outputs.download_customers.uri }}"
+    table: CUSTOMERS
+    header: true
+    delimiter: ","
+
+  - id: download_products
+    type: io.kestra.plugin.core.http.Download
+    uri: https://raw.githubusercontent.com/shrutimantri/javaPractice/refs/heads/master/resources/data/hackfrost_products.csv
+
+  - id: create_products_table
+    type: io.kestra.plugin.jdbc.postgresql.Query
+    sql: |
+      CREATE TABLE IF NOT EXISTS PRODUCTS (
+      id int,
+      name varchar(200),
+      category varchar(100),
+      subcategory varchar(100),  
+      PRIMARY KEY (id));
+
+  - id: load_products
+    type: io.kestra.plugin.jdbc.postgresql.CopyIn
+    format: CSV
+    from: "{{ outputs.download_products.uri }}"
+    table: PRODUCTS
+    header: true
+    delimiter: ","
+
+  - id: create_reviews_table
+    type: io.kestra.plugin.jdbc.postgresql.Query
+    sql: |
+      CREATE TABLE IF NOT EXISTS REVIEWS (
+      review_id UUID NOT NULL DEFAULT gen_random_uuid(),
+      product_id int,
+      customer_id int,
+      rating int,
+      review varchar(1000),
+      PRIMARY KEY (review_id));
+
+pluginDefaults:
+  - type: io.kestra.plugin.jdbc.postgresql.Query
+    values:
+      url: "jdbc:postgresql://{{ secret('POSTGRES_HOST') }}:25432/postgres"
+      username: "{{ secret('POSTGRES_USERNAME') }}"
+      password: "{{ secret('POSTGRES_PASSWORD') }}"
+
+  - type: io.kestra.plugin.jdbc.postgresql.CopyIn
+    values:
+      url: "jdbc:postgresql://{{ secret('POSTGRES_HOST') }}:25432/postgres"
+      username: "{{ secret('POSTGRES_USERNAME') }}"
+      password: "{{ secret('POSTGRES_PASSWORD') }}"
