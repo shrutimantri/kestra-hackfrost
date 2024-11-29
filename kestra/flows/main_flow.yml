@@ -1,0 +1,26 @@
+id: main_flow
+namespace: frosty.raiders
+
+tasks:
+  - id: send_data
+    type: io.kestra.plugin.core.log.Log
+    message: "{{ trigger.data }}"
+
+  - id: join_with_product_id
+    type: io.kestra.plugin.jdbc.postgresql.Query
+    url: "jdbc:postgresql://{{ secret('POSTGRES_HOST') }}:25432/postgres"
+    username: "{{ secret('POSTGRES_USERNAME') }}"
+    password: "{{ secret('POSTGRES_PASSWORD') }}"
+    sql: |
+      SELECT * FROM products WHERE id = {{ trigger.data.product_id }}
+    fetchType: FETCH_ONE
+
+triggers:
+  - id: postgres_debezium
+    type: io.kestra.plugin.debezium.postgres.RealtimeTrigger
+    database: postgres
+    hostname: "{{ secret('POSTGRES_HOST') }}"
+    port: 25432
+    includedTables: public.reviews
+    username: "{{ secret('POSTGRES_USERNAME') }}"
+    password: "{{ secret('POSTGRES_PASSWORD') }}"
