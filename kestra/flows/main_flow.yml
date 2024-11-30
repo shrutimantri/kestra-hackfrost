@@ -14,6 +14,51 @@ tasks:
     sql: |
       SELECT * FROM products WHERE id = {{ trigger.data.product_id }}
     fetchType: FETCH_ONE
+  
+  - id: write_to_pinecone
+    type: io.kestra.plugin.scripts.python.Script
+    beforeCommands:
+      - pip install openai pinecone
+    script: |
+      import json
+      import openai
+      import pinecone
+
+      openai.api_key = "{{ secret('OPENAI_API_KEY') }}"
+      
+      pc = pinecone.Pinecone(api_key="{{ secret('PINECONE_API_KEY') }}")
+      index = pc.Index("reviews-hackfrost")
+      # Function to generate vector from text using OpenAI's model
+      def get_text_vector(record):
+          response = openai.embeddings.create(
+              model="text-embedding-3-small",  # Correct model name
+              input=record
+          )
+          print(response)
+          return response.data[0].embedding
+      
+      # Function to insert a record (with vector) into Pinecone
+      def insert_record_to_pinecone(record, record_id):
+          vector = get_text_vector(json.dumps(record))
+          metadata = {"flow_document": json.dumps(record)}
+          index.upsert([(record_id, vector, metadata)], namespace="reviews")
+      
+      # Example text to be inserted into Pinecone
+      record = {
+        "review_id": "{{ trigger.data.review_id }}",
+        "customer_id": {{ trigger.data.customer_id }},
+        "product__id": {{ trigger.data.product_id }},
+        "rating": {{ trigger.data.rating }},
+        "review": "{{ trigger.data.review }}",
+        "product_name": "{{ outputs.join_with_product_id.row.name }}",
+        "product_category": "{{ outputs.join_with_product_id.row.category }}",
+        "product_subcategory": "{{ outputs.join_with_product_id.row.subcategory }}",
+      }
+      
+      record_id = "{{ trigger.data.review_id }}"
+      
+      # Insert the vectorized text into Pinecone
+      insert_record_to_pinecone(record, record_id)
 
 triggers:
   - id: postgres_debezium
