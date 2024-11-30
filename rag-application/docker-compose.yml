@@ -1,0 +1,10 @@
+services:
+  streamlit:
+    build: .
+    container_name: streamlit
+    ports:
+      - 8501:8501
+    environment:
+      PINECONE_API_KEY: "<PINECONE_API_KEY>" # edit
+      PINECONE_HOST: "<PINECONE_HOST>"  # edit
+      OPENAI_API_KEY: "<OPENAI_API_KEY>" # edit
