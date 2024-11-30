@@ -60,6 +60,28 @@ tasks:
       rating int,
       review varchar(1000),
       PRIMARY KEY (review_id));
+  
+  - id: create_pinecone_index
+    type: io.kestra.plugin.scripts.python.Script
+    beforeCommands:
+      - pip install pinecone
+    script: |
+      import pinecone
+      
+      from pinecone import Pinecone, ServerlessSpec
+      
+      pc = Pinecone(api_key="{{ secret('PINECONE_API_KEY') }}")
+      
+      pc.create_index(
+        name="reviews-hackfrost",
+        dimension=1536,
+        metric="cosine",
+        spec=ServerlessSpec(
+          cloud="aws",
+          region="us-east-1"
+        ),
+        deletion_protection="disabled"
+      )
 
 pluginDefaults:
   - type: io.kestra.plugin.jdbc.postgresql.Query
