@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgres:11.6-alpine
+    ports:
+      - "25432:5432"
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USERNAME=pgadmin
+      - POSTGRES_PASSWORD=changeme
+    command:
+      - "postgres"
+      - "-c"
+      - "wal_level=logical"
