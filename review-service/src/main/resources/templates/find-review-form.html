@@ -1,0 +1,70 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+    <head>
+        <title>Add Review Page</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+              integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+                integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+                crossorigin="anonymous"></script>
+    </head>
+    <body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Frosty Riders Bookstore</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item active">
+                    <a class="nav-link active" href="/">Add Review</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#">Find Review</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+        <div class="container">
+            <div th:if="${reviewDetails != null}">
+                <div class="alert alert-primary mt-5" role="alert">
+                    <h1 class="offset-md-4"> Review Details: </h1>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 offset-md-5">
+                        <div class="mb-3 mt-3">
+                            <label th:text="'ProductId: ' + ${reviewDetails.productId}"></label>
+                        </div>
+                        <div class="mb-3 mt-3">
+                            <label th:text="'CustomerId: ' + ${reviewDetails.customerId}"></label>
+                        </div>
+                        <div class="mb-3 mt-3">
+                            <label th:text="'Rating: ' + ${reviewDetails.rating}"></label>
+                        </div>
+                        <div class="mb-3 mt-3">
+                            <label th:text="'Review: ' + ${reviewDetails.review}"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-5">
+                <div class="col-md-4 offset-md-4">
+                    <h1> Find Review: </h1>
+                    <form action="#" th:action="@{/find-review}" th:object="${review}" method="post">
+                        <div class="mb-3">
+                            <label for="reviewId">Review Id:</label>
+                            <input class="form-control" type="text" th:field="*{reviewId}" id="reviewId"
+                                   placeholder="Review Id">
+                            <span th:if="${#fields.hasErrors('reviewId')}" th:errors="*{reviewId}"></span>
+                        </div>
+                        <div class="offset-md-4">
+                            <input class="btn btn-primary" type="submit" value="Find Review">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

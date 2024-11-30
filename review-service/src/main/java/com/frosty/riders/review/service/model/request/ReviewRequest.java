@@ -1,6 +1,5 @@
 package com.frosty.riders.review.service.model.request;
 
-import com.frosty.riders.review.service.entity.Review;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
