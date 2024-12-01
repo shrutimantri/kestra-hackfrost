@@ -4,10 +4,12 @@ namespace: frosty.raiders
 tasks:
   - id: download_customers
     type: io.kestra.plugin.core.http.Download
+    description: Download customers.csv file
     uri: https://raw.githubusercontent.com/shrutimantri/javaPractice/refs/heads/master/resources/data/customers.csv
 
   - id: create_customers_table
     type: io.kestra.plugin.jdbc.postgresql.Query
+    description: Create customers table in Postgres
     sql: |
       CREATE TABLE IF NOT EXISTS CUSTOMERS (
       customer_id int,
@@ -22,6 +24,7 @@ tasks:
 
   - id: load_customers
     type: io.kestra.plugin.jdbc.postgresql.CopyIn
+    description: Load data from customers CSV file into the corresponding table
     format: CSV
     from: "{{ outputs.download_customers.uri }}"
     table: CUSTOMERS
@@ -30,10 +33,12 @@ tasks:
 
   - id: download_products
     type: io.kestra.plugin.core.http.Download
+    description: Download products.csv file
     uri: https://raw.githubusercontent.com/shrutimantri/javaPractice/refs/heads/master/resources/data/hackfrost_products.csv
 
   - id: create_products_table
     type: io.kestra.plugin.jdbc.postgresql.Query
+    description: Create products table in Postgres
     sql: |
       CREATE TABLE IF NOT EXISTS PRODUCTS (
       id int,
@@ -44,6 +49,7 @@ tasks:
 
   - id: load_products
     type: io.kestra.plugin.jdbc.postgresql.CopyIn
+    description: Load data from products CSV file into the corresponding table
     format: CSV
     from: "{{ outputs.download_products.uri }}"
     table: PRODUCTS
@@ -52,6 +58,7 @@ tasks:
 
   - id: create_reviews_table
     type: io.kestra.plugin.jdbc.postgresql.Query
+    description: Create reviews table in Postgres
     sql: |
       CREATE TABLE IF NOT EXISTS REVIEWS (
       review_id UUID NOT NULL DEFAULT gen_random_uuid(),
@@ -63,6 +70,7 @@ tasks:
   
   - id: create_pinecone_index
     type: io.kestra.plugin.scripts.python.Script
+    description: Create an index in Pinecone
     beforeCommands:
       - pip install pinecone
     script: |

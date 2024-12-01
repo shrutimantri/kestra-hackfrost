@@ -4,10 +4,12 @@ namespace: frosty.raiders
 tasks:
   - id: send_data
     type: io.kestra.plugin.core.log.Log
+    description: Log the data received from trigger
     message: "{{ trigger.data }}"
 
   - id: join_with_product_id
     type: io.kestra.plugin.jdbc.postgresql.Query
+    description: Join the trigger data with product
     url: "jdbc:postgresql://{{ secret('POSTGRES_HOST') }}:25432/postgres"
     username: "{{ secret('POSTGRES_USERNAME') }}"
     password: "{{ secret('POSTGRES_PASSWORD') }}"
@@ -15,72 +17,85 @@ tasks:
       SELECT * FROM products WHERE id = {{ trigger.data.product_id }}
     fetchType: FETCH_ONE
 
-  - id: profanity_check
-    type: io.kestra.plugin.core.http.Request
-    uri: https://vector.profanity.dev
-    headers:
-      ContentType: application/json
-    method: POST
-    body: |
-      {"message": "{{ trigger.data.review }}"}
-
-  - id: send_message_on_profane_review
-    type: io.kestra.plugin.core.flow.If
-    condition: "{{ json(outputs.profanity_check.body).isProfanity }}"
-    then:
-      - id: send_slack_message
-        type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
-        url: "{{ secret('SLACK_WEBHOOK_URL') }}"
-        payload: '{"message" : "{{ trigger.data.review_id }} may contain profane review. Please check." }'
-  
-  - id: write_to_pinecone
-    type: io.kestra.plugin.scripts.python.Script
-    beforeCommands:
-      - pip install openai pinecone
-    script: |
-      import json
-      import openai
-      import pinecone
-
-      openai.api_key = "{{ secret('OPENAI_API_KEY') }}"
+  - id: parallel
+    type: io.kestra.plugin.core.flow.Parallel
+    description: Parallel execution of profanity check and writing to Pinecone
+    tasks:
+      - id: sequential
+        type: io.kestra.plugin.core.flow.Sequential
+        description: Sequential execution of profanity check and slack webhook for profane messages
+        tasks:
+          - id: profanity_check
+            type: io.kestra.plugin.core.http.Request
+            description: Profanity check using a HTTP POST request
+            uri: https://vector.profanity.dev
+            headers:
+              ContentType: application/json
+            method: POST
+            body: |
+              {"message": "{{ trigger.data.review }}"}
+        
+          - id: send_message_on_profane_review
+            type: io.kestra.plugin.core.flow.If
+            description: Checking if the review was profane
+            condition: "{{ json(outputs.profanity_check.body).isProfanity }}"
+            then:
+              - id: send_slack_message
+                type: io.kestra.plugin.notifications.slack.SlackIncomingWebhook
+                description: Send a message using Slack webhook for profane message
+                url: "{{ secret('SLACK_WEBHOOK_URL') }}"
+                payload: '{"message" : "{{ trigger.data.review_id }} may contain profane review. Please check." }'
       
-      pc = pinecone.Pinecone(api_key="{{ secret('PINECONE_API_KEY') }}")
-      index = pc.Index("reviews-hackfrost")
-      # Function to generate vector from text using OpenAI's model
-      def get_text_vector(record):
-          response = openai.embeddings.create(
-              model="text-embedding-3-small",  # Correct model name
-              input=record
-          )
-          print(response)
-          return response.data[0].embedding
-      
-      # Function to insert a record (with vector) into Pinecone
-      def insert_record_to_pinecone(record, record_id):
-          vector = get_text_vector(json.dumps(record))
-          metadata = {"flow_document": json.dumps(record)}
-          index.upsert([(record_id, vector, metadata)], namespace="reviews")
-      
-      # Example text to be inserted into Pinecone
-      record = {
-        "review_id": "{{ trigger.data.review_id }}",
-        "customer_id": {{ trigger.data.customer_id }},
-        "product__id": {{ trigger.data.product_id }},
-        "rating": {{ trigger.data.rating }},
-        "review": "{{ trigger.data.review }}",
-        "product_name": "{{ outputs.join_with_product_id.row.name }}",
-        "product_category": "{{ outputs.join_with_product_id.row.category }}",
-        "product_subcategory": "{{ outputs.join_with_product_id.row.subcategory }}",
-      }
-      
-      record_id = "{{ trigger.data.review_id }}"
-      
-      # Insert the vectorized text into Pinecone
-      insert_record_to_pinecone(record, record_id)
+      - id: write_to_pinecone
+        type: io.kestra.plugin.scripts.python.Script
+        description: Write data and embeddings to Pinecone
+        beforeCommands:
+          - pip install openai pinecone
+        script: |
+          import json
+          import openai
+          import pinecone
+    
+          openai.api_key = "{{ secret('OPENAI_API_KEY') }}"
+          
+          pc = pinecone.Pinecone(api_key="{{ secret('PINECONE_API_KEY') }}")
+          index = pc.Index("reviews-hackfrost")
+          # Function to generate vector from text using OpenAI's model
+          def get_text_vector(record):
+              response = openai.embeddings.create(
+                  model="text-embedding-3-small",  # Correct model name
+                  input=record
+              )
+              print(response)
+              return response.data[0].embedding
+          
+          # Function to insert a record (with vector) into Pinecone
+          def insert_record_to_pinecone(record, record_id):
+              vector = get_text_vector(json.dumps(record))
+              metadata = {"flow_document": json.dumps(record)}
+              index.upsert([(record_id, vector, metadata)], namespace="reviews")
+          
+          # Example text to be inserted into Pinecone
+          record = {
+            "review_id": "{{ trigger.data.review_id }}",
+            "customer_id": {{ trigger.data.customer_id }},
+            "product__id": {{ trigger.data.product_id }},
+            "rating": {{ trigger.data.rating }},
+            "review": "{{ trigger.data.review }}",
+            "product_name": "{{ outputs.join_with_product_id.row.name }}",
+            "product_category": "{{ outputs.join_with_product_id.row.category }}",
+            "product_subcategory": "{{ outputs.join_with_product_id.row.subcategory }}",
+          }
+          
+          record_id = "{{ trigger.data.review_id }}"
+          
+          # Insert the vectorized text into Pinecone
+          insert_record_to_pinecone(record, record_id)
 
 triggers:
   - id: postgres_debezium
     type: io.kestra.plugin.debezium.postgres.RealtimeTrigger
+    description: Realtime trigger for Postgres Debezium for reviews
     database: postgres
     hostname: "{{ secret('POSTGRES_HOST') }}"
     port: 25432
