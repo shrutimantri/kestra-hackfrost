@@ -12,6 +12,17 @@ services:
       - "-c"
       - "wal_level=logical"
 
+  kestra:
+    image: kestra/kestra:v0.19.0
+    ports:
+      - "18080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    depends_on:
+      postgres:
+        condition: service_started
+
   streamlit:
     build: rag-application/.
     container_name: streamlit
